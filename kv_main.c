@@ -1,12 +1,11 @@
 /**
  * @file
  * KidVPN main.
- * as much as possible compatible with different versions of LwIP
  * Verification using sylixos(tm) real-time operating system
  */
 
 /*
- * Copyright (c) 2006-2017 SylixOS Group.
+ * Copyright (c) 2006-2018 SylixOS Group.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
