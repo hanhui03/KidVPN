@@ -15,7 +15,8 @@ The world's smallest VPN server and client (For SylixOS and Linux).
 |**server**|Server IP address (Only for Client)|  
 |**port**|Local port (Optional default: 10088)|
 |**hole_punching**|UDP Hole punching (Optional default: 0)|  
-\* *If too many client in one VPN net you can use UDP hole punching to reduce server forwarding pressure.*  
+
+ \* *If too many client in one VPN net you can use UDP hole punching to reduce server forwarding pressure.*  
 
 * Server configure like this:
 > [**server_0**]  
