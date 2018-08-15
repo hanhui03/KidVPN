@@ -13,7 +13,9 @@ The world's smallest VPN server and client (For SylixOS and Linux).
 |**mtu**|1280 ~ 1472 (Optional default: 1472)|  
 |**local_ip**|Local IP address (Only for Server)|  
 |**server**|Server IP address (Only for Client)|  
-|**port**|Local port (Optional default: 10088)|  
+|**port**|Local port (Optional default: 10088)|
+|**hole_punching**|UDP Hole punching (Optional default: 0)|  
+\* *If too many client in one VPN net you can use UDP hole punching to reduce server forwarding pressure.*  
 
 * Server configure like this:
 > [**server_0**]  
@@ -36,11 +38,11 @@ The world's smallest VPN server and client (For SylixOS and Linux).
 **port=10088**  
 
 ## For SylixOS
-* Step 1: Add vnd interface parameter in /etc/ifparam.ini
+* Step 1: Add vnd interface parameter in **/etc/ifparam.ini**
 > \[**vnd-X**\]  
   *#X is a number of vnd ID)*  
   **enable=1**  
-  *enable(up) this interface*    
+  *#enable(up) this interface*  
   **ipaddr=x.x.x.x**  
   *#should be a real ip address*  
   **netmask=x.x.x.x**  
@@ -48,7 +50,7 @@ The world's smallest VPN server and client (For SylixOS and Linux).
   **mac=xx:xx:xx:xx:xx:xx**  
   *#vnd mac address, If not, the system will use random numbers*  
 
-* Step 2: Use 'vnd' command add a virtual net device.
+* Step 2: Use **'vnd'** command add a virtual net device.
 > **]# vnd add X**  
   *X is a number of vnd ID*
 

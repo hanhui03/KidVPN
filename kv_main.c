@@ -42,7 +42,7 @@
 #include "kv_client.h"
 
 /* version */
-#define KV_VERSION  "0.9.0"
+#define KV_VERSION  "0.9.2"
 
 /* key code change function */
 static int key_code_change (unsigned char *key, unsigned int *keybits, const char *keyascii)
@@ -126,6 +126,7 @@ static void key_code_xpw (unsigned char *keycode, unsigned int keybits, const ch
 int main (int argc, char *argv[])
 {
     FILE *fkey;
+    int hole_punching;
     int i, vnd_id, rand_fd, mtu = KV_VND_DEF_MTU;
     unsigned int port;
     void *cfg;
@@ -161,7 +162,8 @@ usage:
                "           tap_name=tap0                 # Virtual network device name (For Linux & Windows)\n"
                "           mtu=1472                      # 1280 ~ 1472 must same as server (Optional default: 1472)\n"
                "           server=123.123.123.123        # KidVPN Server address\n"
-               "           port=10088                    # Server port (Optional default: 10088)\n\n"
+               "           port=10088                    # Server port (Optional default: 10088)\n"
+               "           hole_punching=0               # UDP hole punching enable (Optional default: 0)\n\n"
                "       kidvpn -genkey 128 (Generate a AES-128 key)\n"
                "       eg. kidvpn -genkey 128\n"
                "           kidvpn -genkey 192\n"
@@ -316,6 +318,8 @@ usage:
 
         key_code_xpw(keycode, keybits, argv[3]);
 
+        hole_punching = kv_cfg_getint(cfg, "hole_punching", 0); /* UDP hole punching enable/disable */
+
         kv_cfg_unload(cfg);
 
         daemon(1, 1); /* make server to a daemon mode */
@@ -324,7 +328,7 @@ usage:
             return  (kv_serv_start(vnd_id, tapname, keycode, keybits, straddr, port, mtu));
 
         } else {
-            return  (kv_cli_start(vnd_id, tapname, keycode, keybits, straddr, port, mtu));
+            return  (kv_cli_start(vnd_id, tapname, keycode, keybits, straddr, port, mtu, hole_punching));
         }
 
     } else {

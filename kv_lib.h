@@ -74,6 +74,19 @@ typedef unsigned int   UINT32;
 #include <mbedtls/aes.h>
 #endif /* !USE_OPENSSL */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* ROUND UP */
+#ifndef ROUND_UP
+#define ROUND_UP(x, align)      (size_t)(((size_t)(x) + (align - 1)) & ~(align - 1))
+#endif
+
+/* AES BLOCK LEN */
+#define KV_AES_BLK_LEN          16
+#define KV_AES_BLK_SHIFT        4
+
 /* KidVPN MTU (Try not to appear IP fragment) */
 #define KV_VND_MIN_MTU          1280
 #define KV_VND_MAX_MTU          (ETH_DATA_LEN - 28)  /* ETH_DATA_LEN - IP_HLEN - UDP_HLEN */
@@ -81,10 +94,19 @@ typedef unsigned int   UINT32;
 
 #define KV_VND_FRAME_LEN(mtu)   (mtu + 18)  /* mtu + ETH_HLEN + VLAN_HLEN */
 #define KV_VND_FRAME_MAX        KV_VND_FRAME_LEN(KV_VND_MAX_MTU)
+#define KV_VND_FRAME_BSIZE      (KV_VND_FRAME_MAX + KV_AES_BLK_LEN) /* KV_VND_FRAME_MAX + AES pad */
 
 /* hello period (s) */
 #define KV_CLI_HELLO_TIMEOUT    60
 #define KV_CLI_HELLO_PERIOD     10
+
+/* hole punching alive (s) */
+#define KV_CLI_HOLE_PUNCHING_ALIVE  60
+
+/* packet mac address */
+#define KV_PKT_MAC_DEST(packet) &packet[0]
+#define KV_PKT_MAC_SRC(packet)  &packet[6]
+#define KV_PKY_MAC_BMC(packet)  (packet[0] & 1)  /* broadcast or multicast */
 
 /* KidVPN core lib functions */
 int  kv_lib_init(int vnd_id, const char *tap_name, int *s_fd, int *v_fd, UINT8 hwaddr[], int mtu);
@@ -98,6 +120,31 @@ void kv_lib_decode(UINT8 *out, UINT8 *in, int len, int *rlen, AES_KEY *aes_de);
 void kv_lib_encode(UINT8 *out, UINT8 *in, int len, int *rlen, mbedtls_aes_context *aes_en);
 void kv_lib_decode(UINT8 *out, UINT8 *in, int len, int *rlen, mbedtls_aes_context *aes_de);
 #endif /* !USE_OPENSSL */
+
+int kv_lib_addr_is_same(struct sockaddr_in *addr1, struct sockaddr_in *addr2);
+
+/* KidVPN client node */
+struct kv_cli_node {
+    struct kv_cli_node *next;
+    struct kv_cli_node *prev;
+    struct sockaddr_in  addr;
+    UINT8               hwaddr[ETH_ALEN];
+    int                 alive;
+};
+
+/* KidVPN client node hash table */
+#define KV_CLI_HASH_SIZE    256
+#define KV_CLI_HASH_MASK    (KV_CLI_HASH_SIZE - 1)
+
+/* KidVPN client node management */
+int  kv_lib_cli_hash(UINT8  hwaddr[]);
+void kv_lib_cli_add(struct kv_cli_node *cli, struct kv_cli_node *header[]);
+void kv_lib_cli_delete(struct kv_cli_node *cli, struct kv_cli_node *header[]);
+struct kv_cli_node *kv_lib_cli_find(UINT8  hwaddr[], struct kv_cli_node *header[]);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __KV_LIB_H */
 /*
