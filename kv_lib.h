@@ -111,6 +111,7 @@ extern "C" {
 /* KidVPN core lib functions */
 int  kv_lib_init(int vnd_id, const char *tap_name, int *s_fd, int *v_fd, UINT8 hwaddr[], int mtu);
 void kv_lib_deinit(int s_fd, int v_fd);
+int  kv_lib_setmtu(int s_fd, int mtu);
 
 #ifdef USE_OPENSSL
 void kv_lib_encode(UINT8 *out, UINT8 *in, int len, int *rlen, AES_KEY *aes_en);

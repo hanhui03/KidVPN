@@ -10,7 +10,7 @@ The world's smallest VPN server and client (For SylixOS and Linux).
 |**key_file**|KidVPN AES Key file|  
 |**vnd_id**|Virtual network device ID (Only for SylixOS)|  
 |**tap_name**|Virtual network device name (Only for Linux)|  
-|**mtu**|1280 ~ 1472 (Optional default: 1472)|  
+|**mtu**|1280 ~ 1472 (Optional default: 1464)|  
 |**local_ip**|Local IP address (Only for Server)|  
 |**server**|Server IP address (Only for Client)|  
 |**port**|Local port (Optional default: 10088)|

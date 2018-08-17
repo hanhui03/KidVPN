@@ -42,7 +42,7 @@
 #include "kv_client.h"
 
 /* version */
-#define KV_VERSION  "0.9.2"
+#define KV_VERSION  "0.9.3"
 
 /* key code change function */
 static int key_code_change (unsigned char *key, unsigned int *keybits, const char *keyascii)
@@ -152,7 +152,7 @@ usage:
                "           key_file=serv.key             # AES key file\n"
                "           vnd_id=0                      # Virtual network device ID (For SylixOS)\n"
                "           tap_name=tap0                 # Virtual network device name (For Linux & Windows)\n"
-               "           mtu=1472                      # 1280 ~ 1472 (Optional default: 1472)\n"
+               "           mtu=1464                      # 1280 ~ 1472 (Optional default: 1464)\n"
                "           local_ip=192.168.0.1          # Local IP address in this system\n"
                "           port=10088                    # Local port (Optional default: 10088)\n\n"
                "           [client_0]\n"
@@ -160,7 +160,7 @@ usage:
                "           key_file=cli.key              # AES key file\n"
                "           vnd_id=0                      # Virtual network device ID (For SylixOS)\n"
                "           tap_name=tap0                 # Virtual network device name (For Linux & Windows)\n"
-               "           mtu=1472                      # 1280 ~ 1472 must same as server (Optional default: 1472)\n"
+               "           mtu=1464                      # 1280 ~ 1472 must same as server (Optional default: 1464)\n"
                "           server=123.123.123.123        # KidVPN Server address\n"
                "           port=10088                    # Server port (Optional default: 10088)\n"
                "           hole_punching=0               # UDP hole punching enable (Optional default: 0)\n\n"

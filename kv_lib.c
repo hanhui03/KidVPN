@@ -38,6 +38,9 @@
 
 #include "kv_lib.h"
 
+/* vnd/tap if name */
+static char kv_vnd_ifname[IFNAMSIZ];
+
 /* init vnd device */
 int kv_lib_init (int vnd_id, const char *tap_name, int *s_fd, int *v_fd, UINT8 hwaddr[], int mtu)
 {
@@ -118,6 +121,8 @@ int kv_lib_init (int vnd_id, const char *tap_name, int *s_fd, int *v_fd, UINT8 h
         goto    error;
     }
 
+    strcpy(kv_vnd_ifname, req.ifr_name);
+
     if (s_fd) {
         *s_fd = so_fd;
     }
@@ -145,6 +150,31 @@ void kv_lib_deinit (int s_fd, int v_fd)
     if (v_fd >= 0) {
         close(v_fd);
     }
+}
+
+/* KidVPN set MTU */
+int kv_lib_setmtu (int s_fd, int mtu)
+{
+    struct ifreq  req;
+
+    strcpy(req.ifr_name, kv_vnd_ifname);
+
+    if (ioctl(s_fd, SIOCGIFMTU, &req)) {
+        fprintf(stderr, "[KidVPN] Command 'SIOCGIFMTU' (%d) error(%d): %s\n", mtu, errno, strerror(errno));
+        return  (-1);
+    }
+
+    if (mtu == req.ifr_mtu) {
+        return  (0);
+    }
+
+    req.ifr_mtu = mtu;
+    if (ioctl(s_fd, SIOCSIFMTU, &req)) {
+        fprintf(stderr, "[KidVPN] Command 'SIOCSIFMTU' (%d) error(%d): %s\n", mtu, errno, strerror(errno));
+        return  (-1);
+    }
+
+    return  (0);
 }
 
 /* KidVPN encode */

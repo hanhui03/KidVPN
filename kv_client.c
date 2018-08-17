@@ -116,6 +116,7 @@ static void kv_cli_init_hdr (void)
 static int kv_cli_loop (int  hole_punching)
 {
     int width, aes_len, to_me, cq_req, hp_req, to_serv;
+    int mtu;
     ssize_t num;
     struct sockaddr_in addr_in;
     struct kv_cli_node *cli;
@@ -184,7 +185,19 @@ static int kv_cli_loop (int  hole_punching)
 
                     if ((ehdr->cmd_len == KV_ERR_LEN) &&
                         (ehdr->magic   == KV_CMD_MAGIC)) {
-                        printf("[KidVPN] Connected error: %d (%d)\n", ntohs(ehdr->err), ntohs(ehdr->code));
+                        if (ntohs(ehdr->err) == KV_ERR_MTU) { /* server client mtu not same */
+                            mtu = ntohs(ehdr->code);
+                            if (kv_lib_setmtu(cli_fd, mtu)) {
+                                fprintf(stderr, "[KidVPN] Set virtual net interface MTU error!\n");
+                                break; /* an error occur, exit! */
+                            }
+                            KV_CLI_LOCK();
+                            vnd_mtu = mtu; /* save new MTU */
+                            KV_CLI_UNLOCK();
+
+                        } else {
+                            printf("[KidVPN] Connected error: %d (%d)\n", ntohs(ehdr->err), ntohs(ehdr->code));
+                        }
                     }
 
                 } else if ((ihdr->cmd == KV_CMD_CRESPOND) && hole_punching) { /* server to client respond client query */
@@ -408,7 +421,6 @@ static void kv_cli_hello (void)
     hello_hdr.cmd     = KV_CMD_HELLO;
     hello_hdr.cmd_len = KV_HELLO_LEN;
     hello_hdr.magic   = KV_CMD_MAGIC;
-    hello_hdr.mtu     = htons(vnd_mtu);
 
     for (;;) {
         KV_CLI_LOCK();
@@ -426,6 +438,8 @@ static void kv_cli_hello (void)
             con_cnt++;
             printf("[KidVPN] Try connect server <%d times>...!\n", con_cnt);
         }
+
+        hello_hdr.mtu = htons(vnd_mtu);
         KV_CLI_UNLOCK();
 
         snum++;
