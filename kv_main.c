@@ -127,7 +127,7 @@ int main (int argc, char *argv[])
 {
     FILE *fkey;
     int hole_punching;
-    int i, vnd_id, rand_fd, mtu = KV_VND_DEF_MTU;
+    int i, vnd_id, rand_fd, is_serv, mtu = KV_VND_DEF_MTU;
     unsigned int port;
     void *cfg;
     const char *keyfile;
@@ -230,6 +230,8 @@ usage:
             return  (-1);
         }
 
+        is_serv = (*mode == 's') ? 1 : 0;
+
         keyfile = kv_cfg_getstring(cfg, "key_file", NULL);
         if (!keyfile) {
             kv_cfg_unload(cfg);
@@ -276,7 +278,7 @@ usage:
             return  (-1);
         }
 
-        if (*mode == 's') {
+        if (is_serv) {
             ipaddr = kv_cfg_getstring(cfg, "local_ip", NULL);
 
         } else {
@@ -324,7 +326,7 @@ usage:
 
         daemon(1, 1); /* make server to a daemon mode */
 
-        if (*mode == 's') {
+        if (is_serv) {
             return  (kv_serv_start(vnd_id, tapname, keycode, keybits, straddr, port, mtu));
 
         } else {
