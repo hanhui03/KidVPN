@@ -410,6 +410,7 @@ int kv_serv_start (int vnd_id, const char *tap_name, const unsigned char *key, u
         return  (-1);
     }
 
+    pthread_detach(t_hello);
     pthread_setname_np(t_hello, "kvs_hello");
 
     if (kv_serv_loop()) { /* server main loop */

@@ -562,6 +562,7 @@ int kv_cli_start (int vnd_id, const char *tap_name, const unsigned char *key, un
         return  (-1);
     }
 
+    pthread_detach(t_hello);
     pthread_setname_np(t_hello, "kvc_hello");
 
     if (kv_cli_loop(hole_punching)) { /* client main loop */

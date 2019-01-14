@@ -24,7 +24,7 @@ The world's smallest VPN server and client (For SylixOS and Linux).
 **key_file=serv.key**  
 **vnd_id=0**  
 **tap_name=tap0**  
-**mtu=1472**  
+**mtu=1464**  
 **local_ip=192.168.0.1**  
 **port=10088**
 
@@ -34,7 +34,7 @@ The world's smallest VPN server and client (For SylixOS and Linux).
 **key_file=cli.key**  
 **vnd_id=0**  
 **tap_name=tap0**  
-**mtu=1472**  
+**mtu=1464**  
 **server=123.123.123.123**  
 **port=10088**  
 
