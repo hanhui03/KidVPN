@@ -327,18 +327,22 @@ static void kv_serv_hello (void)
             while (cli) {
                 if (cli->alive >= KV_CLI_HELLO_PERIOD) {
                     cli->alive -= KV_CLI_HELLO_PERIOD;
-                    if (cli->alive <= 0) { /* client dead! */
-                        del = cli;
-                        cli = cli->next;
-                        kv_lib_cli_delete(del, cli_header); /* delete client from list */
-                        printf("[KidVPN] Client lost: %s [%02x:%02x:%02x:%02x:%02x:%02x]\n",
-                               inet_ntoa(del->addr.sin_addr), del->hwaddr[0], del->hwaddr[1],
-                               del->hwaddr[2], del->hwaddr[3], del->hwaddr[4], del->hwaddr[5]);
-                        free(del);
-                        continue;
-                    }
+                } else {
+                    cli->alive = 0;
                 }
-                cli = cli->next;
+
+                if (cli->alive <= 0) { /* client dead! */
+                    del = cli;
+                    cli = cli->next;
+                    kv_lib_cli_delete(del, cli_header); /* delete client from list */
+                    printf("[KidVPN] Client lost: %s [%02x:%02x:%02x:%02x:%02x:%02x]\n",
+                           inet_ntoa(del->addr.sin_addr), del->hwaddr[0], del->hwaddr[1],
+                           del->hwaddr[2], del->hwaddr[3], del->hwaddr[4], del->hwaddr[5]);
+                    free(del);
+
+                } else {
+                    cli = cli->next;
+                }
             }
         }
         KV_SERV_UNLOCK();

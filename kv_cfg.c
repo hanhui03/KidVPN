@@ -271,7 +271,7 @@ void *kv_cfg_load (const char *file, const char *sector)
 
     pinisec = ini_load_file(file, sector);
     if (!pinisec) {
-        fprintf(stderr, "[KidVPN] No configure for [%s] from %s", sector, file);
+        fprintf(stderr, "[KidVPN] No configure for [%s] from %s\n", sector, file);
         return  (NULL);
     }
 
