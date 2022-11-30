@@ -38,6 +38,12 @@
 
 #include "kv_lib.h"
 
+/* CBC enable */
+int kv_cbc_en = 0;
+
+/* CBC iv */
+static unsigned char kv_cbc_iv[16];
+
 /* vnd/tap if name */
 static char kv_vnd_ifname[IFNAMSIZ];
 
@@ -177,6 +183,15 @@ int kv_lib_setmtu (int s_fd, int mtu)
     return  (0);
 }
 
+/*
+ * KidVPN get iv buffer
+ */
+void kv_lib_cbc_iv (unsigned char iv[16])
+{
+    memcpy(kv_cbc_iv, iv, 16);
+    kv_cbc_en = 1;
+}
+
 /* KidVPN encode */
 #ifdef USE_OPENSSL
 void kv_lib_encode (UINT8 *out, UINT8 *in, int len, int *rlen, AES_KEY *aes_en)
@@ -187,6 +202,7 @@ void kv_lib_encode (UINT8 *out, UINT8 *in, int len, int *rlen, mbedtls_aes_conte
     int aes_len = ROUND_UP(len, KV_AES_BLK_LEN);
     int spare;
     int i, times;
+    unsigned char *iv;
 
     if (rlen) {
         *rlen = aes_len;
@@ -199,14 +215,39 @@ void kv_lib_encode (UINT8 *out, UINT8 *in, int len, int *rlen, mbedtls_aes_conte
     }
 
     times = aes_len >> KV_AES_BLK_SHIFT; /* aes_len / 16 */
-    for (i = 0; i < times; i++) {
+
+    if (kv_cbc_en) { /* CBC */
+        int j;
+
+        iv = kv_cbc_iv;
+
+        for (i = 0; i < times; i++) {
+            for (j = 0; j < 16; j++) {
+                out[j] = (unsigned char)(in[j] ^ iv[j]);
+            }
+
 #ifdef USE_OPENSSL
-        AES_encrypt(in, out, aes_en);
+            AES_encrypt(out, out, aes_en);
 #else /* USE_OPENSSL */
-        mbedtls_aes_crypt_ecb(aes_en, MBEDTLS_AES_ENCRYPT, in, out);
+            mbedtls_aes_crypt_ecb(aes_en, MBEDTLS_AES_ENCRYPT, out, out);
 #endif /* !USE_OPENSSL */
-        in += KV_AES_BLK_LEN;
-        out += KV_AES_BLK_LEN;
+
+            iv = out;
+            in += KV_AES_BLK_LEN;
+            out += KV_AES_BLK_LEN;
+        }
+
+    } else { /* ECB */
+        for (i = 0; i < times; i++) {
+#ifdef USE_OPENSSL
+            AES_encrypt(in, out, aes_en);
+#else /* USE_OPENSSL */
+            mbedtls_aes_crypt_ecb(aes_en, MBEDTLS_AES_ENCRYPT, in, out);
+#endif /* !USE_OPENSSL */
+
+            in += KV_AES_BLK_LEN;
+            out += KV_AES_BLK_LEN;
+        }
     }
 }
 
@@ -220,6 +261,7 @@ void kv_lib_decode (UINT8 *out, UINT8 *in, int len, int *rlen, mbedtls_aes_conte
     int aes_len = ROUND_UP(len, KV_AES_BLK_LEN);
     int spare;
     int i, times;
+    unsigned char *iv;
 
     if (rlen) {
         *rlen = aes_len;
@@ -232,14 +274,39 @@ void kv_lib_decode (UINT8 *out, UINT8 *in, int len, int *rlen, mbedtls_aes_conte
     }
 
     times = aes_len >> KV_AES_BLK_SHIFT; /* aes_len / 16 */
-    for (i = 0; i < times; i++) {
+
+    if (kv_cbc_en) { /* CBC */
+        int j;
+
+        iv = kv_cbc_iv;
+
+        for (i = 0; i < times; i++) {
 #ifdef USE_OPENSSL
-        AES_decrypt(in, out, aes_de);
+            AES_decrypt(in, out, aes_de);
 #else /* USE_OPENSSL */
-        mbedtls_aes_crypt_ecb(aes_de, MBEDTLS_AES_DECRYPT, in, out);
+            mbedtls_aes_crypt_ecb(aes_de, MBEDTLS_AES_DECRYPT, in, out);
 #endif /* !USE_OPENSSL */
-        in += KV_AES_BLK_LEN;
-        out += KV_AES_BLK_LEN;
+
+            for (j = 0; j < 16; j++) {
+                out[j] = (unsigned char)(out[j] ^ iv[j]);
+            }
+
+            iv = in;
+            in += KV_AES_BLK_LEN;
+            out += KV_AES_BLK_LEN;
+        }
+
+    } else { /* ECB */
+        for (i = 0; i < times; i++) {
+#ifdef USE_OPENSSL
+            AES_decrypt(in, out, aes_de);
+#else /* USE_OPENSSL */
+            mbedtls_aes_crypt_ecb(aes_de, MBEDTLS_AES_DECRYPT, in, out);
+#endif /* !USE_OPENSSL */
+
+            in += KV_AES_BLK_LEN;
+            out += KV_AES_BLK_LEN;
+        }
     }
 }
 

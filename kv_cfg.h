@@ -48,6 +48,7 @@ void       *kv_cfg_load(const char *file, const char *sector);
 void        kv_cfg_unload(void *loadret);
 int         kv_cfg_getint(void *loadret, const char *keyword, int def);
 const char *kv_cfg_getstring(void *loadret, const char *keyword, const char *def);
+int         kv_cfg_getboolean(void *loadret, const char *keyword, int def);
 
 #ifdef __cplusplus
 }

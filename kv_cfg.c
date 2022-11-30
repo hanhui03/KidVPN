@@ -189,7 +189,6 @@ static ini_sector_t *ini_load_file (const char *file, const char *sector)
 
         if (strcmp(sec, line)) {
             continue;
-
         } else {
             break;
         }
@@ -318,6 +317,26 @@ const char *kv_cfg_getstring (void *loadret, const char *keyword, const char *de
     }
 
     return  (ini_get_string(pinisec, keyword, def));
+}
+
+/*
+ * config get boolean
+ */
+int kv_cfg_getboolean (void *loadret, const char *keyword, int def)
+{
+    ini_sector_t *pinisec = (ini_sector_t *)loadret;
+    char *str;
+
+    if (!pinisec || !keyword) {
+        return  (def);
+    }
+
+    str = (char *)ini_get_string(pinisec, keyword, def ? "true" : "false");
+    if (strcasecmp(str, "true") == 0 || strcasecmp(str, "yes") == 0) {
+        return  (1);
+    } else {
+        return  (0);
+    }
 }
 
 /*

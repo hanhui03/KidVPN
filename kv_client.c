@@ -392,7 +392,6 @@ static int kv_cli_loop (int  hole_punching)
                     if (to_serv) {
                         sendto(cli_fd, packet_en, aes_len, 0,
                                (struct sockaddr *)&serv_addr, slen); /* NOTICE: send a 'aes_len' packet to server */
-
                     } else {
                         sendto(cli_fd, packet_en, aes_len, 0,
                                (struct sockaddr *)&cli->addr, slen); /* NOTICE: send a 'aes_len' packet to client */
@@ -427,7 +426,6 @@ static void kv_cli_hello (void)
         if (cli_alive) {
             if (cli_alive > KV_CLI_HELLO_PERIOD) {
                 cli_alive -= KV_CLI_HELLO_PERIOD;
-
             } else {
                 cli_alive = 0;
                 con_cnt = 0;

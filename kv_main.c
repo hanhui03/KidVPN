@@ -42,7 +42,7 @@
 #include "kv_client.h"
 
 /* version */
-#define KV_VERSION  "0.9.4"
+#define KV_VERSION  "1.0.0"
 
 /* key code change function */
 static int key_code_change (unsigned char *key, unsigned int *keybits, const char *keyascii)
@@ -122,6 +122,16 @@ static void key_code_xpw (unsigned char *keycode, unsigned int keybits, const ch
     }
 }
 
+/* key code generate iv */
+static void key_code_geniv (unsigned char *iv, const char *password)
+{
+#ifdef USE_OPENSSL
+    MD5((unsigned char *)password, strlen(password), iv);
+#else /* USE_OPENSSL */
+    mbedtls_md5((unsigned char *)password, strlen(password), iv);
+#endif /* !USE_OPENSSL */
+}
+
 /* main function */
 int main (int argc, char *argv[])
 {
@@ -135,7 +145,7 @@ int main (int argc, char *argv[])
     const char *mode;
     char *straddr;
     char keyascii[65];
-    unsigned char keycode[32];
+    unsigned char keycode[32], iv[16];
     unsigned int keybits;
 
 #ifndef SYLIXOS
@@ -150,6 +160,7 @@ usage:
                "           [server_0]\n"
                "           mode=server                   # Run as server mode\n"
                "           key_file=serv.key             # AES key file\n"
+               "           crypto_cbc=yes                # Cipher Block Chaining (Optional default: ECB)\n"
                "           vnd_id=0                      # Virtual network device ID (For SylixOS)\n"
                "           tap_name=tap0                 # Virtual network device name (For Linux & Windows)\n"
                "           mtu=1464                      # 1280 ~ 1472 (Optional default: 1464)\n"
@@ -158,6 +169,7 @@ usage:
                "           [client_0]\n"
                "           mode=client                   # Run as client mode\n"
                "           key_file=cli.key              # AES key file\n"
+               "           crypto_cbc=yes                # Cipher Block Chaining (Optional default: ECB)\n"
                "           vnd_id=0                      # Virtual network device ID (For SylixOS)\n"
                "           tap_name=tap0                 # Virtual network device name (For Linux & Windows)\n"
                "           mtu=1464                      # 1280 ~ 1472 must same as server (Optional default: 1464)\n"
@@ -280,7 +292,6 @@ usage:
 
         if (is_serv) {
             ipaddr = kv_cfg_getstring(cfg, "local_ip", NULL);
-
         } else {
             ipaddr = kv_cfg_getstring(cfg, "server", NULL);
         }
@@ -320,15 +331,21 @@ usage:
 
         key_code_xpw(keycode, keybits, argv[3]);
 
+        if (kv_cfg_getboolean(cfg, "crypto_cbc", 0)) { /* set cbc mode */
+            key_code_geniv(iv, argv[3]);
+            kv_lib_cbc_iv(iv);
+        }
+
         hole_punching = kv_cfg_getint(cfg, "hole_punching", 0); /* UDP hole punching enable/disable */
+
+        if (!kv_cfg_getboolean(cfg, "no_daemon", 0)) {
+            daemon(1, 1); /* make this process to a daemon mode */
+        }
 
         kv_cfg_unload(cfg);
 
-        daemon(1, 1); /* make server to a daemon mode */
-
         if (is_serv) {
             return  (kv_serv_start(vnd_id, tapname, keycode, keybits, straddr, port, mtu));
-
         } else {
             return  (kv_cli_start(vnd_id, tapname, keycode, keybits, straddr, port, mtu, hole_punching));
         }

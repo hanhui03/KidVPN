@@ -5,16 +5,17 @@ The world's smallest VPN server and client (For SylixOS and Linux).
 * Configure file is a ini format:  
 > 
 |keywords| description |  
-|:----:|:----:|  
-|**mode**|KidVPN run mode, 'server' or 'client'|  
-|**key_file**|KidVPN AES Key file|  
-|**vnd_id**|Virtual network device ID (Only for SylixOS)|  
-|**tap_name**|Virtual network device name (Only for Linux)|  
-|**mtu**|1280 ~ 1472 (Optional default: 1464)|  
-|**local_ip**|Local IP address (Only for Server)|  
-|**server**|Server IP address (Only for Client)|  
+|:----:|:----|  
+|**mode**|KidVPN run mode, `'server'` or `'client'`|
+|**key_file**|KidVPN AES Key file|
+|**crypto_cbc**|Cipher Block Chaining (Optional default: ECB)|
+|**vnd_id**|Virtual network device ID (Only for SylixOS)|
+|**tap_name**|Virtual network device name (Only for Linux)|
+|**mtu**|1280 ~ 1472 (Optional default: 1464)|
+|**local_ip**|Local IP address (Only for Server)|
+|**server**|Server IP address (Only for Client)|
 |**port**|Local port (Optional default: 10088)|
-|**hole_punching**|UDP Hole punching (Optional default: 0)|  
+|**hole_punching**|UDP Hole punching (Optional default: 0)|
 
  \* *If too many client in one VPN net you can use UDP hole punching to reduce server forwarding pressure.*  
 
@@ -22,6 +23,7 @@ The world's smallest VPN server and client (For SylixOS and Linux).
 > [**server_0**]  
 **mode=server**  
 **key_file=serv.key**  
+**crypto_cbc=yes**  
 **vnd_id=0**  
 **tap_name=tap0**  
 **mtu=1464**  
@@ -32,6 +34,7 @@ The world's smallest VPN server and client (For SylixOS and Linux).
 > [**client_0**]  
 **mode=client**  
 **key_file=cli.key**  
+**crypto_cbc=yes**  
 **vnd_id=0**  
 **tap_name=tap0**  
 **mtu=1464**  

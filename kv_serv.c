@@ -39,6 +39,9 @@
 #include "kv_lib.h"
 #include "kv_serv.h"
 
+/* KidVPN CBC enable */
+extern int kv_cbc_en;
+
 /* KidVPN server fd */
 static int serv_fd = -1;
 
@@ -267,8 +270,12 @@ static int kv_serv_loop (void)
                 KV_SERV_UNLOCK();
 
                 if (to_me) {
-                    kv_lib_decode(&packet_in[KV_AES_BLK_LEN], &packet_en[KV_AES_BLK_LEN],
-                                  (int)num - KV_AES_BLK_LEN, &aes_len, &ase_dec); /* decode */
+                    if (kv_cbc_en) {
+                        kv_lib_decode(packet_in, packet_en, num, &aes_len, &ase_dec); /* decode all */
+                    } else {
+                        kv_lib_decode(&packet_in[KV_AES_BLK_LEN], &packet_en[KV_AES_BLK_LEN],
+                                      (int)num - KV_AES_BLK_LEN, &aes_len, &ase_dec); /* decode remaining */
+                    }
 
                     if (num > KV_VND_FRAME_LEN(vnd_mtu)) {
                         num = KV_VND_FRAME_LEN(vnd_mtu); /* Cut tail (The tail is AES 16Bytes align add) */
