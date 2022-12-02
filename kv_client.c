@@ -49,6 +49,11 @@ struct kv_cli_hp {
 #define KV_CLI_HPSTAT_HPRESPOND 3
 };
 
+/* KidVPN exit flag */
+#if KV_VOLUNTARILY_QUIT
+static int cli_exit = 0;
+#endif
+
 /* KidVPN client fd */
 static int cli_fd = -1;
 
@@ -57,6 +62,9 @@ static int vnd_fd = -1;
 
 /* KidVPN virtual net MTU */
 static int vnd_mtu = KV_VND_DEF_MTU;
+
+/* KidVPN hello thread handle */
+static pthread_t t_hello;
 
 /* KidVPN virtual net device hwaddr */
 static struct kv_hello_hdr hello_hdr;
@@ -91,7 +99,9 @@ struct kv_cquery_hdr cquery_hdr __attribute__((aligned(KV_PACK_ALIGN))); /* must
 struct kv_hpquery_hdr hpquery_hdr __attribute__((aligned(KV_PACK_ALIGN)));
 struct kv_hprespond_hdr hprespond_hdr __attribute__((aligned(KV_PACK_ALIGN)));
 
-/* KidVPN init packet header */
+/*
+ * KidVPN init packet header
+ */
 static void kv_cli_init_hdr (void)
 {
     /* init cquery packet */
@@ -112,9 +122,16 @@ static void kv_cli_init_hdr (void)
     memcpy(hprespond_hdr.hwaddr, hello_hdr.hwaddr, ETH_ALEN);
 }
 
-/* KidVPN client loop */
+/*
+ * KidVPN client loop
+ */
 static int kv_cli_loop (int  hole_punching)
 {
+#if KV_VOLUNTARILY_QUIT
+    int sigfd;
+    struct signalfd_siginfo fdsi;
+#endif
+
     int width, aes_len, to_me, cq_req, hp_req, to_serv;
     int mtu;
     ssize_t num;
@@ -139,13 +156,42 @@ static int kv_cli_loop (int  hole_punching)
     FD_ZERO(&fdset);
     width = (cli_fd > vnd_fd) ? (cli_fd + 1) : (vnd_fd + 1);
 
+#if KV_VOLUNTARILY_QUIT
+    sigfd = kv_lib_signalfd();
+    if (sigfd < 0) {
+        return  (-1);
+    } else if (sigfd >= width) {
+        width = sigfd + 1;
+    }
+#endif /* KV_VOLUNTARILY_QUIT */
+
     for (;;) {
         FD_SET(cli_fd, &fdset);
         FD_SET(vnd_fd, &fdset);
 
+#if KV_VOLUNTARILY_QUIT
+        FD_SET(sigfd, &fdset);
+#endif /* KV_VOLUNTARILY_QUIT */
+
         if (select(width, &fdset, NULL, NULL, NULL) <= 0) { /* wait for read */
             break; /* an error occur, exit! */
         }
+
+#if KV_VOLUNTARILY_QUIT
+        if (FD_ISSET(sigfd, &fdset)) { /* The specified signal arrives */
+            num = read(sigfd, &fdsi, sizeof(struct signalfd_siginfo));
+            if (num >= sizeof(struct signalfd_siginfo)) {
+                if (fdsi.ssi_signo == SIGUSR1) {
+                    kv_lib_update_iv(NULL);
+
+                } else if (fdsi.ssi_signo == SIGTERM) {
+                    cli_exit = 1;
+                    pthread_kill(t_hello, SIGUSR1);
+                    break;
+                }
+            }
+        }
+#endif /* KV_VOLUNTARILY_QUIT */
 
         if (FD_ISSET(cli_fd, &fdset)) { /* server send a message to me */
             num = recvfrom(cli_fd, packet_en, KV_VND_FRAME_BSIZE, 0,
@@ -401,10 +447,12 @@ static int kv_cli_loop (int  hole_punching)
         }
     }
 
-    return  (-1); /* an error occur, exit! */
+    return  (0); /* exit! */
 }
 
-/* KidVPN client hello thread */
+/*
+ * KidVPN client hello thread
+ */
 static void kv_cli_hello (void)
 {
     int i;
@@ -466,17 +514,24 @@ static void kv_cli_hello (void)
         }
         KV_CLI_UNLOCK();
 
+#if KV_VOLUNTARILY_QUIT
+        if (cli_exit) {
+            break;
+        }
+#endif /* KV_VOLUNTARILY_QUIT */
+
         sleep(KV_CLI_HELLO_PERIOD);
     }
 }
 
-/* start KidVPN client */
+/*
+ * start KidVPN client
+ */
 int kv_cli_start (int vnd_id, const char *tap_name, const unsigned char *key, unsigned int keybits,
                   const char *server, unsigned int port, int mtu, int hole_punching)
 {
     struct addrinfo hints;
     struct addrinfo *phints;
-    pthread_t t_hello;
 
     if (!key || !server) {
         return  (-1);
@@ -525,7 +580,7 @@ int kv_cli_start (int vnd_id, const char *tap_name, const unsigned char *key, un
         getaddrinfo(server, NULL, &hints, &phints);
         if (phints == NULL) {
             fprintf(stderr, "[KidVPN] Request could not find host %s ."
-                            "Please check the name and try again.\n\n", server);
+                            "Please check the name and try again.\n", server);
             return  (-1);
 
         } else {

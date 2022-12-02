@@ -90,7 +90,7 @@ struct kv_hello_hdr {
     UINT32  magic;
     UINT32  snum;
     UINT16  mtu;
-    UINT8   pad[16]; /* for aes encode decode */
+    UINT8   pad[KV_AES_BLK_LEN]; /* for aes encode decode */
 } __attribute__((packed));
 
 #define KV_HELLO_LEN  18
@@ -102,7 +102,7 @@ struct kv_welcome_hdr {
     UINT8   hwaddr[ETH_ALEN];
     UINT32  magic;
     UINT32  snum;
-    UINT8   pad[16]; /* for aes encode decode */
+    UINT8   pad[KV_AES_BLK_LEN]; /* for aes encode decode */
 } __attribute__((packed));
 
 #define KV_WELCOME_LEN  16
@@ -124,7 +124,7 @@ struct kv_cquery_hdr {
     UINT8   cmd_len;
     UINT8   hwaddr[ETH_ALEN];
     UINT32  magic;
-    UINT8   pad[16]; /* for aes encode decode */
+    UINT8   pad[KV_AES_BLK_LEN]; /* for aes encode decode */
 } __attribute__((packed));
 
 #define KV_CQUERY_LEN  12
@@ -137,7 +137,7 @@ struct kv_crespond_hdr {
     UINT32  magic;
     UINT32  cliaddr;
     UINT16  cliport;
-    UINT8   pad[16]; /* for aes encode decode */
+    UINT8   pad[KV_AES_BLK_LEN]; /* for aes encode decode */
 } __attribute__((packed));
 
 #define KV_CRESPOND_LEN  18
@@ -148,7 +148,7 @@ struct kv_hpquery_hdr {
     UINT8   cmd_len;
     UINT8   hwaddr[ETH_ALEN];
     UINT32  magic;
-    UINT8   pad[16]; /* for aes encode decode */
+    UINT8   pad[KV_AES_BLK_LEN]; /* for aes encode decode */
 } __attribute__((packed));
 
 #define KV_HPQUERY_LEN  12
@@ -159,7 +159,7 @@ struct kv_hprespond_hdr {
     UINT8   cmd_len;
     UINT8   hwaddr[ETH_ALEN];
     UINT32  magic;
-    UINT8   pad[16]; /* for aes encode decode */
+    UINT8   pad[KV_AES_BLK_LEN]; /* for aes encode decode */
 } __attribute__((packed));
 
 #define KV_HPRESPOND_LEN  12
@@ -172,7 +172,7 @@ struct kv_err_hdr {
     UINT32  magic;
     UINT16  err;
     UINT16  code;
-    UINT8   pad2[16]; /* for aes encode decode */
+    UINT8   pad2[KV_AES_BLK_LEN]; /* for aes encode decode */
 } __attribute__((packed));
 
 #define KV_ERR_LEN  12

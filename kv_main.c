@@ -44,7 +44,9 @@
 /* version */
 #define KV_VERSION  "1.0.0"
 
-/* key code change function */
+/*
+ * key code change function
+ */
 static int key_code_change (unsigned char *key, unsigned int *keybits, const char *keyascii)
 {
     int  ascii_len = strlen(keyascii);
@@ -105,7 +107,9 @@ static int key_code_change (unsigned char *key, unsigned int *keybits, const cha
     return  (0);
 }
 
-/* key code add password function */
+/*
+ * key code add password function
+ */
 static void key_code_xpw (unsigned char *keycode, unsigned int keybits, const char *password)
 {
     int  i, loop;
@@ -122,17 +126,34 @@ static void key_code_xpw (unsigned char *keycode, unsigned int keybits, const ch
     }
 }
 
-/* key code generate iv */
-static void key_code_geniv (unsigned char *iv, const char *password)
+#if !KV_VOLUNTARILY_QUIT
+/*
+ * IV update sigaction
+ */
+static void iv_update_handle (int signo)
 {
-#ifdef USE_OPENSSL
-    MD5((unsigned char *)password, strlen(password), iv);
-#else /* USE_OPENSSL */
-    mbedtls_md5((unsigned char *)password, strlen(password), iv);
-#endif /* !USE_OPENSSL */
+    kv_lib_update_iv(NULL);
 }
 
-/* main function */
+/*
+ * IV update sigaction init
+ */
+static void iv_update_handle_init (void)
+{
+    struct sigaction action;
+
+    bzero(&action, sizeof(action));
+    sigaddset(&action.sa_mask, SIGUSR1);
+    action.sa_flags   = SA_RESTART;
+    action.sa_handler = iv_update_handle;
+
+    sigaction(SIGUSR1, &action, NULL);
+}
+#endif /* !KV_VOLUNTARILY_QUIT */
+
+/*
+ * main function
+ */
 int main (int argc, char *argv[])
 {
     FILE *fkey;
@@ -140,12 +161,12 @@ int main (int argc, char *argv[])
     int i, vnd_id, rand_fd, is_serv, mtu = KV_VND_DEF_MTU;
     unsigned int port;
     void *cfg;
-    const char *keyfile;
+    const char *file;
     const char *ipaddr;
     const char *mode;
     char *straddr;
     char keyascii[65];
-    unsigned char keycode[32], iv[16];
+    unsigned char keycode[32];
     unsigned int keybits;
 
 #ifndef SYLIXOS
@@ -160,7 +181,7 @@ usage:
                "           [server_0]\n"
                "           mode=server                   # Run as server mode\n"
                "           key_file=serv.key             # AES key file\n"
-               "           crypto_cbc=yes                # Cipher Block Chaining (Optional default: ECB)\n"
+               "           iv_file=serv.iv               # CBC IV file (Optional default use ECB)\n"
                "           vnd_id=0                      # Virtual network device ID (For SylixOS)\n"
                "           tap_name=tap0                 # Virtual network device name (For Linux & Windows)\n"
                "           mtu=1464                      # 1280 ~ 1472 (Optional default: 1464)\n"
@@ -169,7 +190,7 @@ usage:
                "           [client_0]\n"
                "           mode=client                   # Run as client mode\n"
                "           key_file=cli.key              # AES key file\n"
-               "           crypto_cbc=yes                # Cipher Block Chaining (Optional default: ECB)\n"
+               "           iv_file=cli.iv                # CBC IV file (Optional default use ECB)\n"
                "           vnd_id=0                      # Virtual network device ID (For SylixOS)\n"
                "           tap_name=tap0                 # Virtual network device name (For Linux & Windows)\n"
                "           mtu=1464                      # 1280 ~ 1472 must same as server (Optional default: 1464)\n"
@@ -244,8 +265,8 @@ usage:
 
         is_serv = (*mode == 's') ? 1 : 0;
 
-        keyfile = kv_cfg_getstring(cfg, "key_file", NULL);
-        if (!keyfile) {
+        file = kv_cfg_getstring(cfg, "key_file", NULL);
+        if (!file) {
             kv_cfg_unload(cfg);
             fprintf(stderr, "[KidVPN] Can't found key file setting\n");
             return  (-1);
@@ -309,15 +330,15 @@ usage:
             return  (-1);
         }
 
-        fkey = fopen(keyfile, "r"); /* open key file */
+        fkey = fopen(file, "r"); /* open key file */
         if (!fkey) {
             kv_cfg_unload(cfg);
-            fprintf(stderr, "[KidVPN] Open %s error(%d): %s\n", keyfile, errno, strerror(errno));
+            fprintf(stderr, "[KidVPN] Open %s error(%d): %s\n", file, errno, strerror(errno));
             return  (-1);
         }
 
         if (!fgets(keyascii, 65, fkey)) { /* read aes key */
-            fprintf(stderr, "[KidVPN] Key file %s error(%d): %s\n", keyfile, errno, strerror(errno));
+            fprintf(stderr, "[KidVPN] Key file %s error(%d): %s\n", file, errno, strerror(errno));
             fclose(fkey);
             kv_cfg_unload(cfg);
             return  (-1);
@@ -331,9 +352,16 @@ usage:
 
         key_code_xpw(keycode, keybits, argv[3]);
 
-        if (kv_cfg_getboolean(cfg, "crypto_cbc", 0)) { /* set cbc mode */
-            key_code_geniv(iv, argv[3]);
-            kv_lib_cbc_iv(iv);
+        file = kv_cfg_getstring(cfg, "iv_file", NULL);
+        if (file) {
+            if (kv_lib_update_iv(file)) { /* Set IV */
+                kv_cfg_unload(cfg);
+                return  (-1);
+            }
+
+#if !KV_VOLUNTARILY_QUIT
+            iv_update_handle_init(); /* Handle Update IV signal */
+#endif
         }
 
         hole_punching = kv_cfg_getint(cfg, "hole_punching", 0); /* UDP hole punching enable/disable */

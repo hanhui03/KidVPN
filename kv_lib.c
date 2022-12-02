@@ -42,12 +42,17 @@
 int kv_cbc_en = 0;
 
 /* CBC iv */
-static unsigned char kv_cbc_iv[16];
+static unsigned char kv_cbc_iv[KV_CIPHER_IV_LEN];
+
+/* CBC iv file */
+static char *kv_cbc_iv_file = NULL;
 
 /* vnd/tap if name */
 static char kv_vnd_ifname[IFNAMSIZ];
 
-/* init vnd device */
+/*
+ * init vnd device
+ */
 int kv_lib_init (int vnd_id, const char *tap_name, int *s_fd, int *v_fd, UINT8 hwaddr[], int mtu)
 {
     int i, so_fd = -1, vnd_fd = -1;
@@ -147,7 +152,9 @@ error:
     return  (-1);
 }
 
-/* deinit vnd device */
+/*
+ * deinit vnd device
+ */
 void kv_lib_deinit (int s_fd, int v_fd)
 {
     if (s_fd >= 0) {
@@ -158,7 +165,9 @@ void kv_lib_deinit (int s_fd, int v_fd)
     }
 }
 
-/* KidVPN set MTU */
+/*
+ * KidVPN set MTU
+ */
 int kv_lib_setmtu (int s_fd, int mtu)
 {
     struct ifreq  req;
@@ -184,15 +193,53 @@ int kv_lib_setmtu (int s_fd, int mtu)
 }
 
 /*
- * KidVPN get iv buffer
+ * KidVPN update iv buffer
  */
-void kv_lib_cbc_iv (unsigned char iv[16])
+int kv_lib_update_iv (const char *iv_file)
 {
-    memcpy(kv_cbc_iv, iv, 16);
+    FILE *fp;
+    char buf[256];
+
+    if (iv_file) {
+        kv_cbc_iv_file = strdup(iv_file);
+        if (!kv_cbc_iv_file) {
+            fprintf(stderr, "[KidVPN] Not enough memory.\n");
+            return  (-1);
+        }
+
+    } else if (!kv_cbc_iv_file) {
+        fprintf(stderr, "[KidVPN] No IV file specified.\n");
+        return  (-1);
+    }
+
+    fp = fopen(kv_cbc_iv_file, "r");
+    if (!fp) {
+        fprintf(stderr, "[KidVPN] Open %s error(%d): %s\n", kv_cbc_iv_file, errno, strerror(errno));
+        return  (-1);
+    }
+
+    if (!fgets(buf, sizeof(buf), fp)) { /* read iv */
+        fprintf(stderr, "[KidVPN] IV file %s error(%d): %s\n", kv_cbc_iv_file, errno, strerror(errno));
+        fclose(fp);
+        return  (-1);
+    }
+
+    buf[sizeof(buf) - 1] = '\0';
+    fclose(fp);
+
+#ifdef USE_OPENSSL
+    MD5((unsigned char *)buf, strlen(buf), kv_cbc_iv);
+#else /* USE_OPENSSL */
+    mbedtls_md5((unsigned char *)buf, strlen(buf), kv_cbc_iv);
+#endif /* !USE_OPENSSL */
+
     kv_cbc_en = 1;
+    return  (0);
 }
 
-/* KidVPN encode */
+/*
+ * KidVPN encode
+ */
 #ifdef USE_OPENSSL
 void kv_lib_encode (UINT8 *out, UINT8 *in, int len, int *rlen, AES_KEY *aes_en)
 #else /* USE_OPENSSL */
@@ -222,7 +269,7 @@ void kv_lib_encode (UINT8 *out, UINT8 *in, int len, int *rlen, mbedtls_aes_conte
         iv = kv_cbc_iv;
 
         for (i = 0; i < times; i++) {
-            for (j = 0; j < 16; j++) {
+            for (j = 0; j < KV_CIPHER_IV_LEN; j++) {
                 out[j] = (unsigned char)(in[j] ^ iv[j]);
             }
 
@@ -251,7 +298,9 @@ void kv_lib_encode (UINT8 *out, UINT8 *in, int len, int *rlen, mbedtls_aes_conte
     }
 }
 
-/* KidVPN decode */
+/*
+ * KidVPN decode
+ */
 #ifdef USE_OPENSSL
 void kv_lib_decode (UINT8 *out, UINT8 *in, int len, int *rlen, AES_KEY *aes_de)
 #else /* USE_OPENSSL */
@@ -287,7 +336,7 @@ void kv_lib_decode (UINT8 *out, UINT8 *in, int len, int *rlen, mbedtls_aes_conte
             mbedtls_aes_crypt_ecb(aes_de, MBEDTLS_AES_DECRYPT, in, out);
 #endif /* !USE_OPENSSL */
 
-            for (j = 0; j < 16; j++) {
+            for (j = 0; j < KV_CIPHER_IV_LEN; j++) {
                 out[j] = (unsigned char)(out[j] ^ iv[j]);
             }
 
@@ -310,7 +359,9 @@ void kv_lib_decode (UINT8 *out, UINT8 *in, int len, int *rlen, mbedtls_aes_conte
     }
 }
 
-/* KidVPN address is same */
+/*
+ * KidVPN address is same
+ */
 int kv_lib_addr_is_same (struct sockaddr_in *addr1, struct sockaddr_in *addr2)
 {
     if ((addr1->sin_port == addr2->sin_port) &&
@@ -321,7 +372,9 @@ int kv_lib_addr_is_same (struct sockaddr_in *addr1, struct sockaddr_in *addr2)
     return  (0);
 }
 
-/* KidVPN client hash */
+/*
+ * KidVPN client hash
+ */
 int kv_lib_cli_hash (UINT8  hwaddr[])
 {
     int hash;
@@ -336,7 +389,9 @@ int kv_lib_cli_hash (UINT8  hwaddr[])
     return  (hash & KV_CLI_HASH_MASK);
 }
 
-/* KidVPN add a new client into list */
+/*
+ * KidVPN add a new client into list
+ */
 void kv_lib_cli_add (struct kv_cli_node *cli, struct kv_cli_node *header[])
 {
     int hash = kv_lib_cli_hash(cli->hwaddr);
@@ -349,7 +404,9 @@ void kv_lib_cli_add (struct kv_cli_node *cli, struct kv_cli_node *header[])
     header[hash] = cli;
 }
 
-/* KidVPN delete a client from list */
+/*
+ * KidVPN delete a client from list
+ */
 void kv_lib_cli_delete (struct kv_cli_node *cli, struct kv_cli_node *header[])
 {
     int hash = kv_lib_cli_hash(cli->hwaddr);
@@ -365,7 +422,9 @@ void kv_lib_cli_delete (struct kv_cli_node *cli, struct kv_cli_node *header[])
     }
 }
 
-/* KidVPN find client from list */
+/*
+ * KidVPN find client from list
+ */
 struct kv_cli_node *kv_lib_cli_find (UINT8  hwaddr[], struct kv_cli_node *header[])
 {
     struct kv_cli_node *cli;
@@ -379,6 +438,30 @@ struct kv_cli_node *kv_lib_cli_find (UINT8  hwaddr[], struct kv_cli_node *header
 
     return  (NULL);
 }
+
+#if KV_VOLUNTARILY_QUIT
+/*
+ * signalfd init
+ */
+int kv_lib_signalfd (void)
+{
+    int sigfd;
+    sigset_t mask;
+
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGTERM);
+    sigaddset(&mask, SIGUSR1);
+    sigprocmask(SIG_BLOCK, &mask, NULL);
+
+    sigfd = signalfd(-1, &mask, SFD_CLOEXEC | SFD_NONBLOCK);
+    if (sigfd < 0) {
+        fprintf(stderr, "[KidVPN] Can not open signalfd, error(%d): %s\n", errno, strerror(errno));
+        return  (-1);
+    }
+
+    return  (sigfd);
+}
+#endif /* KV_VOLUNTARILY_QUIT */
 
 /*
  * end

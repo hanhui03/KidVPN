@@ -54,6 +54,7 @@ typedef unsigned int   UINT32;
 #include <unistd.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <signal.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -80,14 +81,30 @@ typedef unsigned int   UINT32;
 extern "C" {
 #endif
 
+/* Voluntarily quit */
+#ifndef KV_VOLUNTARILY_QUIT
+#ifdef SYLIXOS
+#define KV_VOLUNTARILY_QUIT     1
+#else
+#define KV_VOLUNTARILY_QUIT     0
+#endif
+#endif
+
+#if KV_VOLUNTARILY_QUIT
+#include <sys/signalfd.h>
+#endif
+
 /* ROUND UP */
 #ifndef ROUND_UP
 #define ROUND_UP(x, align)      (size_t)(((size_t)(x) + (align - 1)) & ~(align - 1))
 #endif
 
-/* AES BLOCK LEN */
+/* AES block length */
 #define KV_AES_BLK_LEN          16
 #define KV_AES_BLK_SHIFT        4
+
+/* Init vector length */
+#define KV_CIPHER_IV_LEN        16
 
 /* KidVPN MTU (Try not to appear IP fragment) */
 #define KV_VND_MIN_MTU          1280
@@ -99,8 +116,8 @@ extern "C" {
 #define KV_VND_FRAME_BSIZE      (KV_VND_FRAME_MAX + KV_AES_BLK_LEN) /* KV_VND_FRAME_MAX + AES pad */
 
 /* hello period (s) */
-#define KV_CLI_HELLO_TIMEOUT    60
-#define KV_CLI_HELLO_PERIOD     10
+#define KV_CLI_HELLO_TIMEOUT    20
+#define KV_CLI_HELLO_PERIOD     5
 
 /* hole punching alive (s) */
 #define KV_CLI_HOLE_PUNCHING_ALIVE  60
@@ -115,7 +132,7 @@ int  kv_lib_init(int vnd_id, const char *tap_name, int *s_fd, int *v_fd, UINT8 h
 void kv_lib_deinit(int s_fd, int v_fd);
 int  kv_lib_setmtu(int s_fd, int mtu);
 
-void kv_lib_cbc_iv(unsigned char iv[16]);
+int  kv_lib_update_iv(const char *iv_file);
 #ifdef USE_OPENSSL
 void kv_lib_encode(UINT8 *out, UINT8 *in, int len, int *rlen, AES_KEY *aes_en);
 void kv_lib_decode(UINT8 *out, UINT8 *in, int len, int *rlen, AES_KEY *aes_de);
@@ -145,6 +162,11 @@ int  kv_lib_cli_hash(UINT8  hwaddr[]);
 void kv_lib_cli_add(struct kv_cli_node *cli, struct kv_cli_node *header[]);
 void kv_lib_cli_delete(struct kv_cli_node *cli, struct kv_cli_node *header[]);
 struct kv_cli_node *kv_lib_cli_find(UINT8  hwaddr[], struct kv_cli_node *header[]);
+
+/* Voluntarily quit */
+#if KV_VOLUNTARILY_QUIT
+int  kv_lib_signalfd(void);
+#endif
 
 #ifdef __cplusplus
 }
