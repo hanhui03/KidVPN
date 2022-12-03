@@ -149,8 +149,6 @@ static int kv_cli_loop (int  hole_punching)
 
     struct kv_input_hdr *ihdr = (struct kv_input_hdr *)packet_in;
 
-    printf("[KidVPN] Client working.\n");
-
     kv_cli_init_hdr();
 
     FD_ZERO(&fdset);
@@ -164,6 +162,8 @@ static int kv_cli_loop (int  hole_punching)
         width = sigfd + 1;
     }
 #endif /* KV_VOLUNTARILY_QUIT */
+
+    printf("[KidVPN] Client working.\n");
 
     for (;;) {
         FD_SET(cli_fd, &fdset);

@@ -139,8 +139,6 @@ static int kv_serv_loop (void)
 
     struct kv_input_hdr *ihdr = (struct kv_input_hdr *)packet_in;
 
-    printf("[KidVPN] Server working.\n");
-
     kv_serv_init_hdr();
 
     FD_ZERO(&fdset);
@@ -154,6 +152,8 @@ static int kv_serv_loop (void)
         width = sigfd + 1;
     }
 #endif /* KV_VOLUNTARILY_QUIT */
+
+    printf("[KidVPN] Server working.\n");
 
     for (;;) {
         FD_SET(serv_fd, &fdset);
